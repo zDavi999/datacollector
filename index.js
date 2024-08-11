@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 
 const port = process.env.PORT || 3000;
-const stringsFilePath = path.join(__dirname, 'strings.json');
+const stringsFilePath = path.resolve(__dirname, 'strings.json');
 
 // Cria o arquivo strings.json se ele não existir
 if (!fs.existsSync(stringsFilePath)) {
@@ -16,16 +16,29 @@ if (!fs.existsSync(stringsFilePath)) {
 // Rota para receber e salvar a string
 app.post("/add", (req, res) => {
   const { string } = req.body;
-  
+
   if (typeof string === 'string') {
     fs.readFile(stringsFilePath, 'utf8', (err, data) => {
-      if (err) return res.status(500).json({ error: 'Erro ao ler o arquivo' });
+      if (err) {
+        console.error('Erro ao ler o arquivo:', err);
+        return res.status(500).json({ error: 'Erro ao ler o arquivo' });
+      }
 
-      const strings = JSON.parse(data);
+      let strings;
+      try {
+        strings = JSON.parse(data);
+      } catch (parseError) {
+        console.error('Erro ao analisar o JSON:', parseError);
+        return res.status(500).json({ error: 'Erro ao analisar o JSON' });
+      }
+
       strings.push(string);
 
-      fs.writeFile(stringsFilePath, JSON.stringify(strings), (err) => {
-        if (err) return res.status(500).json({ error: 'Erro ao salvar o arquivo' });
+      fs.writeFile(stringsFilePath, JSON.stringify(strings, null, 2), (err) => {
+        if (err) {
+          console.error('Erro ao salvar o arquivo:', err);
+          return res.status(500).json({ error: 'Erro ao salvar o arquivo' });
+        }
         res.status(200).json({ message: 'String salva com sucesso' });
       });
     });
@@ -37,9 +50,19 @@ app.post("/add", (req, res) => {
 // Rota para retornar as strings salvas
 app.get("/strings", (req, res) => {
   fs.readFile(stringsFilePath, 'utf8', (err, data) => {
-    if (err) return res.status(500).json({ error: 'Erro ao ler o arquivo' });
-    
-    const strings = JSON.parse(data);
+    if (err) {
+      console.error('Erro ao ler o arquivo:', err);
+      return res.status(500).json({ error: 'Erro ao ler o arquivo' });
+    }
+
+    let strings;
+    try {
+      strings = JSON.parse(data);
+    } catch (parseError) {
+      console.error('Erro ao analisar o JSON:', parseError);
+      return res.status(500).json({ error: 'Erro ao analisar o JSON' });
+    }
+
     res.status(200).json(strings);
   });
 });
